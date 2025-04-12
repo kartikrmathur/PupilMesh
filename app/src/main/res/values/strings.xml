@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">PupilMesh</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="title_face">face</string>
+    <string name="title_manga">Manga</string>
+    <string name="title_sign_in">SignIn</string>
+</resources>

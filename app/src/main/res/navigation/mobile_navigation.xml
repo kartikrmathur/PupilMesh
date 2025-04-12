@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/navigation_sign_in">
+
+    <fragment
+        android:id="@+id/navigation_sign_in"
+        android:name="com.example.pupilmesh.ui.home.HomeFragment"
+        android:label="@string/title_sign_in"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_navigation_sign_in_to_navigation_main"
+            app:destination="@id/navigation_main" />
+    </fragment>
+
+    <navigation
+        android:id="@+id/navigation_main"
+        app:startDestination="@+id/navigation_manga">
+
+        <fragment
+            android:id="@+id/navigation_manga"
+            android:name="com.example.pupilmesh.ui.Manga.MangaFragment"
+            android:label="@string/title_manga"
+            tools:layout="@layout/fragment_manga" />
+
+        <fragment
+            android:id="@+id/navigation_face"
+            android:name="com.example.pupilmesh.ui.Face.FaceFragment"
+            android:label="@string/title_face"
+            tools:layout="@layout/fragment_face" />
+    </navigation>
+</navigation>

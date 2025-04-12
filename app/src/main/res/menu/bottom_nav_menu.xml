@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_manga"
+        android:icon="@drawable/ic_manga_blalck_24dp"
+        android:title="@string/title_manga" />
+
+    <item
+        android:id="@+id/navigation_face"
+        android:icon="@drawable/baseline_face_24"
+        android:title="@string/title_face" />
+
+</menu>
