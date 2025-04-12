@@ -92,7 +92,7 @@ class HomeFragment : Fragment() {
                     showStatusMessage("Sign in successful!", true)
                     
                     // Show bottom navigation and navigate to main navigation
-                    (requireActivity() as MainActivity).showBottomNavigation()
+                    (requireActivity() as MainActivity).showBottomNavigation(true)
                     findNavController().navigate(R.id.action_navigation_sign_in_to_navigation_main)
                 }
             }

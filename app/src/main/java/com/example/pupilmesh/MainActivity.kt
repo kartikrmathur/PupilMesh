@@ -17,14 +17,15 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
+    private var _binding: ActivityMainBinding? = null
+    private val binding get() = _binding!!
     private lateinit var prefsManager: SharedPreferencesManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         prefsManager = SharedPreferencesManager(this)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+        _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         // Hide bottom navigation initially
@@ -66,22 +67,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun showBottomNavigation() {
-        binding.navView.visibility = View.VISIBLE
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
-        val navView: BottomNavigationView = binding.navView
-        
-        val appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.navigation_manga,
-                R.id.navigation_face
-            )
-        )
-        setupActionBarWithNavController(navController, appBarConfiguration)
-        navView.setupWithNavController(navController)
+    fun showBottomNavigation(show: Boolean) {
+        binding.navView.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
     }
 
-    fun hideBottomNavigation() {
-        binding.navView.visibility = View.GONE
+    override fun onDestroy() {
+        super.onDestroy()
+        _binding = null
     }
 }
