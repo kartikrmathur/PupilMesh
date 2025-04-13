@@ -56,14 +56,14 @@ class MangaFragment : Fragment() {
                     viewModel.hasMore.value && 
                     lastVisibleItemPosition >= totalItemCount - 5) {
                     // Load more when user is within 5 items from the end
-                    viewModel.fetchManga("48a7a3538dmsh402e50625d8f2a3p18757djsnfdaebba2df73")
+                    viewModel.fetchManga(requireContext().getString(com.example.pupilmesh.R.string.rapid_api_key))
                 }
             }
         })
 
         // Set up pull-to-refresh
         binding.swipeRefreshLayout.setOnRefreshListener {
-            viewModel.refresh("48a7a3538dmsh402e50625d8f2a3p18757djsnfdaebba2df73")
+            viewModel.refresh(requireContext().getString(com.example.pupilmesh.R.string.rapid_api_key))
         }
 
         // Observe manga list
@@ -94,7 +94,7 @@ class MangaFragment : Fragment() {
         }
 
         // Initial fetch
-        viewModel.fetchManga("48a7a3538dmsh402e50625d8f2a3p18757djsnfdaebba2df73")
+        viewModel.fetchManga(requireContext().getString(com.example.pupilmesh.R.string.rapid_api_key))
     }
 
     override fun onDestroyView() {

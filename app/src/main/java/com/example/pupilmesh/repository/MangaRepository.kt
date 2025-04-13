@@ -54,12 +54,20 @@ class MangaRepository {
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string()
                     Log.e(TAG, "Error response body: $errorBody")
-                    throw Exception("Failed to fetch manga: ${response.code}")
+                    when (response.code) {
+                        401, 403 -> throw Exception("Authentication failed: API key may be invalid or expired (${response.code})")
+                        429 -> throw Exception("Rate limit exceeded: Too many requests (${response.code})")
+                        500, 502, 503, 504 -> throw Exception("Server error: The API service is experiencing issues (${response.code})")
+                        else -> throw Exception("Failed to fetch manga: ${response.code} - ${response.message}")
+                    }
                 }
                 
                 parseMangaResponse(response)
             } catch (e: Exception) {
                 Log.e(TAG, "Network error: ${e.message}", e)
+                if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException) {
+                    throw Exception("Network error: Please check your internet connection")
+                }
                 throw e
             }
         }
