@@ -9,7 +9,9 @@ import com.bumptech.glide.Glide
 import com.example.pupilmesh.data.Manga
 import com.example.pupilmesh.databinding.ItemMangaBinding
 
-class MangaAdapter : ListAdapter<Manga, MangaAdapter.MangaViewHolder>(MangaDiffCallback()) {
+class MangaAdapter(
+    private val onItemClick: (Manga) -> Unit
+) : ListAdapter<Manga, MangaAdapter.MangaViewHolder>(MangaDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MangaViewHolder {
         val binding = ItemMangaBinding.inflate(
@@ -17,7 +19,7 @@ class MangaAdapter : ListAdapter<Manga, MangaAdapter.MangaViewHolder>(MangaDiffC
             parent,
             false
         )
-        return MangaViewHolder(binding)
+        return MangaViewHolder(binding, onItemClick)
     }
 
     override fun onBindViewHolder(holder: MangaViewHolder, position: Int) {
@@ -25,7 +27,8 @@ class MangaAdapter : ListAdapter<Manga, MangaAdapter.MangaViewHolder>(MangaDiffC
     }
 
     class MangaViewHolder(
-        private val binding: ItemMangaBinding
+        private val binding: ItemMangaBinding,
+        private val onItemClick: (Manga) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(manga: Manga) {
@@ -41,6 +44,11 @@ class MangaAdapter : ListAdapter<Manga, MangaAdapter.MangaViewHolder>(MangaDiffC
                 Glide.with(binding.root.context)
                     .load(thumbUrl)
                     .into(binding.coverImage)
+            }
+
+            // Set click listener on the root view
+            binding.root.setOnClickListener {
+                onItemClick(manga)
             }
         }
     }

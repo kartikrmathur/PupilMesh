@@ -23,12 +23,26 @@
             android:id="@+id/navigation_manga"
             android:name="com.example.pupilmesh.ui.Manga.MangaFragment"
             android:label="@string/title_manga"
-            tools:layout="@layout/fragment_manga" />
+            tools:layout="@layout/fragment_manga">
+            <action
+                android:id="@+id/action_navigation_manga_to_mangaDescriptionFragment"
+                app:destination="@id/mangaDescriptionFragment" />
+        </fragment>
 
         <fragment
             android:id="@+id/navigation_face"
             android:name="com.example.pupilmesh.ui.Face.FaceFragment"
             android:label="@string/title_face"
             tools:layout="@layout/fragment_face" />
+
+        <fragment
+            android:id="@+id/mangaDescriptionFragment"
+            android:name="com.example.pupilmesh.ui.Manga.MangaDescriptionFragment"
+            android:label="Manga Details"
+            tools:layout="@layout/fragment_manga_description">
+            <argument
+                android:name="manga"
+                app:argType="com.example.pupilmesh.data.Manga" />
+        </fragment>
     </navigation>
 </navigation>
