@@ -1,0 +1,28 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="160dp"
+    android:viewportWidth="120"
+    android:viewportHeight="160">
+  <!-- Background -->
+  <path
+      android:fillColor="#3498db"
+      android:pathData="M0,0h120v160h-120z"/>
+      
+  <!-- Stylized person -->
+  <path
+      android:fillColor="#000000"
+      android:pathData="M60,50m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"/>
+  <path
+      android:fillColor="#000000"
+      android:pathData="M40,110 L60,90 L80,110 L80,130 L40,130 z"/>
+      
+  <!-- Red cape -->
+  <path
+      android:fillColor="#e74c3c"
+      android:pathData="M80,50 L100,70 L90,100 L80,110 L70,90 z"/>
+      
+  <!-- Delivery box -->
+  <path
+      android:fillColor="#f39c12"
+      android:pathData="M30,90 L50,90 L50,110 L30,110 z"/>
+</vector> 
