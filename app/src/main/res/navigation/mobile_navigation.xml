@@ -43,6 +43,9 @@
             <argument
                 android:name="manga"
                 app:argType="com.example.pupilmesh.data.Manga" />
+            <action
+                android:id="@+id/action_mangaDescriptionFragment_to_navigation_face"
+                app:destination="@id/navigation_face" />
         </fragment>
     </navigation>
 </navigation>

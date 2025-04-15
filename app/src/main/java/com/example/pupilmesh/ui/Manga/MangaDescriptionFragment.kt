@@ -39,16 +39,19 @@ class MangaDescriptionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Set up toolbar navigation
-        binding.toolbar.setNavigationOnClickListener {
+        // Set up navigation for the bottom tabs
+        binding.mangaButton.setOnClickListener {
             findNavController().navigateUp()
+        }
+        
+        binding.faceButton.setOnClickListener {
+            // Navigate to Face fragment
+            // This may need adjustment based on your navigation graph
+            findNavController().navigate(MangaDescriptionFragmentDirections.actionMangaDescriptionFragmentToFaceFragment())
         }
 
         // Display manga details
         manga?.let { manga ->
-            // Set toolbar title
-            binding.collapsingToolbar.title = manga.title
-
             // Load cover image
             manga.thumb?.let { thumbUrl ->
                 Glide.with(this)
@@ -58,26 +61,20 @@ class MangaDescriptionFragment : Fragment() {
 
             // Set text fields
             binding.mangaTitle.text = manga.title
-            binding.mangaSubtitle.text = manga.subTitle ?: ""
+            binding.mangaSubtitle.text = buildRepeatedSubtitle(manga)
             binding.mangaSummary.text = manga.summary ?: "No summary available"
-            binding.mangaStatus.text = manga.status ?: "Unknown"
-            binding.mangaType.text = manga.type ?: "Manga"
-            binding.mangaChapters.text = "Chapters: ${manga.totalChapter ?: 0}"
-            
-            // Join genres and authors with commas
-            binding.mangaGenres.text = manga.genres?.joinToString(", ") ?: "Not specified"
-            binding.mangaAuthors.text = manga.authors?.joinToString(", ") ?: "Unknown"
-            
-            // Set up the Read button
-            binding.readButton.setOnClickListener {
-                // TODO: Add navigation to the reading screen or chapter list
-            }
             
             // Set up the favorite button
-            binding.fabFavorite.setOnClickListener {
+            binding.favoriteButton.setOnClickListener {
                 // TODO: Add to favorites functionality
             }
         }
+    }
+    
+    private fun buildRepeatedSubtitle(manga: Manga): String {
+        val subtitle = manga.subTitle ?: ""
+        val koreanTitle = manga.subTitle?.let { "• ${it}" } ?: ""
+        return "${manga.title} • ${manga.title} ${koreanTitle}"
     }
 
     override fun onDestroyView() {
