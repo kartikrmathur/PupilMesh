@@ -20,17 +20,16 @@ class FaceDetectorHelper(
     private var lastProcessingTimeMs: Long = 0
     private var lastFrameTime: Long = 0
     private val executorService: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private var isSetup = false
 
     interface DetectorListener {
         fun onDetectionResult(result: FaceDetectorResult)
         fun onError(error: String)
     }
 
-    init {
-        setupFaceDetector()
-    }
-
     private fun setupFaceDetector() {
+        if (isSetup) return
+        
         try {
             val modelName = "face_detection_short_range.tflite"
 
@@ -52,6 +51,7 @@ class FaceDetectorHelper(
                 }
 
             faceDetector = FaceDetector.createFromOptions(context, optionsBuilder.build())
+            isSetup = true
         } catch (e: Exception) {
             faceDetectorListener.onError(e.message ?: "Unknown error")
             Log.e(TAG, "Setup failed: ${e.message}")
@@ -63,19 +63,33 @@ class FaceDetectorHelper(
             setupFaceDetector()
         }
         
+        if (faceDetector == null) {
+            Log.e(TAG, "Face detector not initialized")
+            return
+        }
+        
         this.lastFrameTime = frameTime
         
         executorService.execute {
-            // Convert the input Bitmap object to an MPImage object to run inference
-            val mpImage = BitmapImageBuilder(bitmap).build()
-            faceDetector?.detectAsync(mpImage, frameTime)
+            try {
+                val mpImage = BitmapImageBuilder(bitmap).build()
+                faceDetector?.detectAsync(mpImage, frameTime)
+            } catch (e: Exception) {
+                Log.e(TAG, "Detection failed: ${e.message}")
+                faceDetectorListener.onError("Detection failed: ${e.message}")
+            }
         }
     }
 
     fun clearDetector() {
-        faceDetector?.close()
-        faceDetector = null
-        executorService.shutdown()
+        try {
+            faceDetector?.close()
+            faceDetector = null
+            isSetup = false
+            executorService.shutdown()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing detector: ${e.message}")
+        }
     }
 
     companion object {

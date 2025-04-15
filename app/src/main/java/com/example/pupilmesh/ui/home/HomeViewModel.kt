@@ -3,10 +3,7 @@ package com.example.pupilmesh.ui.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.pupilmesh.data.AppDatabase
-import com.example.pupilmesh.data.User
-import com.example.pupilmesh.util.SecurityUtils
-import com.example.pupilmesh.util.SharedPreferencesManager
+import com.example.pupilmesh.data.UserRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = AppDatabase.getDatabase(application)
-    private val userDao = database.userDao()
-    private val prefsManager = SharedPreferencesManager(application)
+    private val userRepository = UserRepository(application)
 
     private val _isAuthenticated = MutableStateFlow(false)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated
@@ -26,29 +21,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            val isSignedIn = withContext(Dispatchers.IO) {
-                prefsManager.isSignedIn()
-            }
-            _isAuthenticated.value = isSignedIn
+            _isAuthenticated.value = userRepository.isUserLoggedIn()
         }
     }
 
     fun authenticate(email: String, password: String) {
         viewModelScope.launch {
             try {
-                val user = withContext(Dispatchers.IO) {
-                    userDao.getUserByEmail(email)
-                }
+                val userExists = userRepository.checkUserExists(email)
 
-                if (user != null) {
-                    val isValid = withContext(Dispatchers.Default) {
-                        SecurityUtils.verifyPassword(password, user.salt, user.passwordHash)
-                    }
-                    
-                    if (isValid) {
-                        withContext(Dispatchers.IO) {
-                            prefsManager.setSignedIn(email)
-                        }
+                if (userExists) {
+                    // Try to login
+                    val loginSuccess = userRepository.loginUser(email, password)
+                    if (loginSuccess) {
+                        userRepository.setLoggedInUser(email)
                         _isAuthenticated.value = true
                         _authMessage.value = "Successfully signed in"
                     } else {
@@ -57,19 +43,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } else {
                     // Create new user
-                    val salt = withContext(Dispatchers.Default) {
-                        SecurityUtils.generateSalt()
-                    }
-                    val passwordHash = withContext(Dispatchers.Default) {
-                        SecurityUtils.hashPassword(password, salt)
-                    }
-                    val newUser = User(email, passwordHash, salt)
-                    
-                    withContext(Dispatchers.IO) {
-                        userDao.insertUser(newUser)
-                        prefsManager.setSignedIn(email)
-                    }
-                    
+                    userRepository.registerUser(email, password)
+                    userRepository.setLoggedInUser(email)
                     _isAuthenticated.value = true
                     _authMessage.value = "Account created successfully"
                 }
@@ -82,9 +57,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun signOut() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                prefsManager.clearSignedIn()
-            }
+            userRepository.clearLoggedInUser()
             _isAuthenticated.value = false
         }
     }

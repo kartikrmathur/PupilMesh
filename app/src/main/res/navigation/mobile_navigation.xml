@@ -7,9 +7,9 @@
 
     <fragment
         android:id="@+id/navigation_sign_in"
-        android:name="com.example.pupilmesh.ui.home.HomeFragment"
+        android:name="com.example.pupilmesh.ui.login.LoginFragment"
         android:label="@string/title_sign_in"
-        tools:layout="@layout/fragment_home">
+        tools:layout="@layout/fragment_login">
         <action
             android:id="@+id/action_navigation_sign_in_to_navigation_main"
             app:destination="@id/navigation_main" />

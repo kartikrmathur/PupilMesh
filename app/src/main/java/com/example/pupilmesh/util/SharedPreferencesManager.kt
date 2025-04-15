@@ -5,31 +5,22 @@ import android.content.SharedPreferences
 
 class SharedPreferencesManager(context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences(
-        "PupilMeshPrefs",
-        Context.MODE_PRIVATE
+        "pupil_mesh_prefs", Context.MODE_PRIVATE
     )
 
     fun setSignedIn(email: String) {
-        sharedPreferences.edit().apply {
-            putString(KEY_SIGNED_IN_EMAIL, email)
-            putBoolean(KEY_IS_SIGNED_IN, true)
-            apply()
-        }
+        sharedPreferences.edit().putString("signed_in_email", email).apply()
+    }
+
+    fun isSignedIn(): Boolean {
+        return sharedPreferences.contains("signed_in_email")
+    }
+
+    fun getSignedInEmail(): String? {
+        return sharedPreferences.getString("signed_in_email", null)
     }
 
     fun clearSignedIn() {
-        sharedPreferences.edit().apply {
-            remove(KEY_SIGNED_IN_EMAIL)
-            putBoolean(KEY_IS_SIGNED_IN, false)
-            apply()
-        }
-    }
-
-    fun isSignedIn(): Boolean = sharedPreferences.getBoolean(KEY_IS_SIGNED_IN, false)
-    fun getSignedInEmail(): String? = sharedPreferences.getString(KEY_SIGNED_IN_EMAIL, null)
-
-    companion object {
-        private const val KEY_IS_SIGNED_IN = "is_signed_in"
-        private const val KEY_SIGNED_IN_EMAIL = "signed_in_email"
+        sharedPreferences.edit().remove("signed_in_email").apply()
     }
 } 

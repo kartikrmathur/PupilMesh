@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
 
@@ -37,6 +38,7 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
     private lateinit var cameraExecutor: ExecutorService
     private var camera: Camera? = null
     private var imageAnalyzer: ImageAnalysis? = null
+    private var isDetectorInitialized = false
     
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -59,14 +61,25 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        // Initialize camera executor
         cameraExecutor = Executors.newSingleThreadExecutor()
         
-        // Initialize the face detector
+        // Initialize detector helper without setting up the detector yet
         faceDetectorHelper = FaceDetectorHelper(
             context = requireContext(),
             faceDetectorListener = this
         )
         
+        // Set initial text
+        binding.textFace.text = "Initializing camera..."
+        
+        // Wait until the view is properly laid out before starting camera
+        view.post {
+            checkCameraPermission()
+        }
+    }
+    
+    private fun checkCameraPermission() {
         // Request camera permission and start camera if granted
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
@@ -83,33 +96,39 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-            
-            // Set up the preview use case
-            val preview = Preview.Builder()
-                .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-                }
-            
-            // Set up the image analyzer
-            imageAnalyzer = ImageAnalysis.Builder()
-                .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-                .also {
-                    it.setAnalyzer(cameraExecutor) { imageProxy ->
-                        analyzeImage(imageProxy)
-                    }
-                }
-            
-            // Select front camera as a default
-            val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-                .build()
-            
             try {
+                val cameraProvider = cameraProviderFuture.get()
+                
+                // Set up the preview use case
+                val preview = Preview.Builder()
+                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                    .build()
+                
+                // Safely set surface provider
+                _binding?.let { binding ->
+                    preview.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+                } ?: return@addListener
+                
+                // Set up the image analyzer
+                imageAnalyzer = ImageAnalysis.Builder()
+                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also {
+                        it.setAnalyzer(cameraExecutor) { imageProxy ->
+                            if (isAdded && _binding != null) {
+                                analyzeImage(imageProxy)
+                            } else {
+                                imageProxy.close()
+                            }
+                        }
+                    }
+                
+                // Select front camera as a default
+                val cameraSelector = CameraSelector.Builder()
+                    .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                    .build()
+                
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
                 
@@ -121,8 +140,12 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
                     imageAnalyzer
                 )
                 
+                // Set initial text
+                _binding?.textFace?.text = "Camera ready"
+                
             } catch (e: Exception) {
                 Log.e(TAG, "Use case binding failed", e)
+                _binding?.textFace?.text = "Camera error: ${e.message}"
             }
             
         }, ContextCompat.getMainExecutor(requireContext()))
@@ -130,50 +153,93 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
     
     private fun analyzeImage(imageProxy: ImageProxy) {
         lifecycleScope.launch(Dispatchers.Default) {
-            val frameTime = SystemClock.uptimeMillis()
-            
-            val bitmap = imageProxy.toBitmap()
-            
-            // Process the image
-            faceDetectorHelper.detectAsync(bitmap, frameTime)
-            
-            // Close the image to make it available for the next frame
-            imageProxy.close()
+            try {
+                val frameTime = SystemClock.uptimeMillis()
+                val bitmap = imageProxy.toBitmap()
+                
+                // Process the image
+                faceDetectorHelper.detectAsync(bitmap, frameTime)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error analyzing image: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    _binding?.textFace?.text = "Analysis error: ${e.message}"
+                }
+            } finally {
+                // Always close the image proxy
+                imageProxy.close()
+            }
         }
     }
     
     override fun onDetectionResult(result: FaceDetectorResult) {
+        // Skip updates if fragment is not attached
+        if (!isAdded) return
+        
         activity?.runOnUiThread {
-            // Get the camera's orientation
-            val rotation = binding.viewFinder.display.rotation
-            
-            // Update the UI with the results
-            binding.overlayView.setResults(
-                result,
-                binding.viewFinder.width,
-                binding.viewFinder.height,
-                binding.overlayView.width,
-                binding.overlayView.height
-            )
-            
-            // Display the number of faces detected
-            val numFaces = result.detections().size
-            binding.textFace.text = "Faces detected: $numFaces"
+            _binding?.let { binding ->
+                try {
+                    // Get the camera's orientation
+                    val rotation = binding.viewFinder.display.rotation
+                    
+                    // Update the UI with the results
+                    binding.overlayView.setResults(
+                        result,
+                        binding.viewFinder.width,
+                        binding.viewFinder.height,
+                        binding.overlayView.width,
+                        binding.overlayView.height
+                    )
+                    
+                    // Display the number of faces detected
+                    val numFaces = result.detections().size
+                    binding.textFace.text = "Faces detected: $numFaces"
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error updating UI: ${e.message}")
+                    binding.textFace.text = "Display error: ${e.message}"
+                }
+            }
         }
     }
     
     override fun onError(error: String) {
+        // Skip updates if fragment is not attached
+        if (!isAdded) return
+        
         activity?.runOnUiThread {
-            binding.textFace.text = "Error: $error"
-            Log.e(TAG, "Face detection error: $error")
+            _binding?.let { binding ->
+                binding.textFace.text = "Error: $error"
+                Log.e(TAG, "Face detection error: $error")
+            }
         }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Make sure we restart the camera when returning to this fragment
+        if (_binding != null && camera == null) {
+            checkCameraPermission()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Stop camera analysis when paused
+        imageAnalyzer?.clearAnalyzer()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Clean up
-        cameraExecutor.shutdown()
-        faceDetectorHelper.clearDetector()
+        // Clean up resources
+        imageAnalyzer?.clearAnalyzer()
+        camera = null
+        
+        try {
+            cameraExecutor.shutdown()
+            faceDetectorHelper.clearDetector()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during cleanup: ${e.message}")
+        }
+        
         _binding = null
     }
     
