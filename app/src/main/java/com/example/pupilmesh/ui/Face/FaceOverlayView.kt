@@ -84,11 +84,47 @@ class FaceOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
             (refTop + refHeight).toInt()
         )
 
+        // Reset face detection status
+        isFaceInReferenceRect = false
+        
+        // Check if any face is in the reference rectangle
+        val detections = detectionResults.detections()
+        for (i in 0 until detections.size) {
+            val detection = detections[i]
+            val boundingBox = detection.boundingBox()
+            
+            // Convert normalized coordinates to actual pixel coordinates
+            val left = bounds.left + (boundingBox.left * inputWidth.toFloat()) * scaleFactor
+            val top = bounds.top + (boundingBox.top * inputHeight.toFloat()) * scaleFactor
+            val right = bounds.left + (boundingBox.right * inputWidth.toFloat()) * scaleFactor
+            val bottom = bounds.top + (boundingBox.bottom * inputHeight.toFloat()) * scaleFactor
+            
+            // Create a rect for the face bounding box
+            val faceRect = Rect(
+                left.toInt(),
+                top.toInt(),
+                right.toInt(),
+                bottom.toInt()
+            )
+            
+            // Check if face is inside reference rectangle
+            if (referenceRect.contains(faceRect)) {
+                isFaceInReferenceRect = true
+                break
+            }
+        }
+
         // Log scaling information to help debug
         Log.d("FaceOverlayView", "Image: ${imageWidth}x${imageHeight}, View: ${viewWidth}x${viewHeight}")
         Log.d("FaceOverlayView", "Scale: $scaleFactor, Offset: $offsetX,$offsetY")
+        Log.d("FaceOverlayView", "Face in reference: $isFaceInReferenceRect")
 
         invalidate()
+    }
+    
+    // Public method to check if face is in reference rectangle
+    fun isFaceInReferenceRect(): Boolean {
+        return isFaceInReferenceRect
     }
 
     @SuppressLint("DrawAllocation")
@@ -119,9 +155,6 @@ class FaceOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
         results?.let { result ->
             val detections = result.detections()
             
-            // Reset face detection status
-            isFaceInReferenceRect = false
-            
             for (i in 0 until detections.size) {
                 val detection = detections[i]
                 val boundingBox = detection.boundingBox()
@@ -132,14 +165,6 @@ class FaceOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
                 val right = bounds.left + (boundingBox.right * inputWidth.toFloat()) * scaleFactor
                 val bottom = bounds.top + (boundingBox.bottom * inputHeight.toFloat()) * scaleFactor
                 
-                // Create a rect for the face bounding box
-                val faceRect = Rect(
-                    left.toInt(),
-                    top.toInt(),
-                    right.toInt(),
-                    bottom.toInt()
-                )
-                
                 // Draw the face bounding box
                 canvas.drawRect(
                     left,
@@ -148,20 +173,6 @@ class FaceOverlayView(context: Context, attrs: AttributeSet?) : View(context, at
                     bottom,
                     facePaint
                 )
-                
-                // Check if face is inside reference rectangle
-                if (referenceRect.contains(faceRect)) {
-                    isFaceInReferenceRect = true
-                    Log.d("FaceOverlayView", "Face is inside reference rectangle")
-                } else {
-                    Log.d("FaceOverlayView", "Face is outside reference rectangle")
-                }
-                
-                // Update the reference rectangle color
-                updateReferenceRectColor()
-                
-                // Redraw the reference rectangle with updated color
-                canvas.drawRect(referenceRect, referencePaint)
             }
         }
     }

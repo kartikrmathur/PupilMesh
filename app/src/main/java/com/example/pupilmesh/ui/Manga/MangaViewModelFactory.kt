@@ -11,7 +11,7 @@ class MangaViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MangaViewModel::class.java)) {
-            val repository = MangaRepository()
+            val repository = MangaRepository(application)
             return MangaViewModel(application, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

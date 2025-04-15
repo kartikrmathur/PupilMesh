@@ -75,10 +75,24 @@ class MangaFragment : Fragment() {
             viewModel.refresh(requireContext().getString(com.example.pupilmesh.R.string.rapid_api_key))
         }
 
+        // Set up empty state view
+        binding.emptyStateView.setOnClickListener {
+            viewModel.refresh(requireContext().getString(com.example.pupilmesh.R.string.rapid_api_key))
+        }
+
         // Observe manga list
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.mangaList.collectLatest { mangaList ->
                 adapter.submitList(mangaList)
+                
+                // Show or hide empty state
+                if (mangaList.isEmpty() && !viewModel.isLoading.value) {
+                    binding.emptyStateView.visibility = View.VISIBLE
+                    binding.mangaRecyclerView.visibility = View.GONE
+                } else {
+                    binding.emptyStateView.visibility = View.GONE
+                    binding.mangaRecyclerView.visibility = View.VISIBLE
+                }
             }
         }
 
@@ -86,16 +100,29 @@ class MangaFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.isLoading.collectLatest { isLoading ->
                 binding.swipeRefreshLayout.isRefreshing = isLoading
+                
+                // Show loading indicator for initial load
+                if (isLoading && adapter.currentList.isEmpty()) {
+                    binding.progressBar.visibility = View.VISIBLE
+                } else {
+                    binding.progressBar.visibility = View.GONE
+                }
             }
         }
 
         // Observe error state
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.error.collectLatest { error ->
-                error?.let {
-                    binding.errorText.text = it
+                if (error != null) {
+                    binding.errorText.text = error
                     binding.errorText.visibility = View.VISIBLE
-                } ?: run {
+                    
+                    // Show retry button if we have an error and no items
+                    if (adapter.currentList.isEmpty()) {
+                        binding.emptyStateView.visibility = View.VISIBLE
+                        binding.mangaRecyclerView.visibility = View.GONE
+                    }
+                } else {
                     binding.errorText.visibility = View.GONE
                 }
             }

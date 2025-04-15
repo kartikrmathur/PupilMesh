@@ -3,6 +3,11 @@ package com.example.pupilmesh.ui.Face
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Matrix
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
@@ -23,6 +28,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.pupilmesh.databinding.FragmentFaceBinding
 import com.google.mediapipe.tasks.vision.facedetector.FaceDetectorResult
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +45,6 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
     private lateinit var cameraExecutor: ExecutorService
     private var camera: Camera? = null
     private var imageAnalyzer: ImageAnalysis? = null
-    private var isDetectorInitialized = false
     
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -64,14 +70,14 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
         // Initialize camera executor
         cameraExecutor = Executors.newSingleThreadExecutor()
         
-        // Initialize detector helper without setting up the detector yet
+        // Initialize detector helper
         faceDetectorHelper = FaceDetectorHelper(
             context = requireContext(),
             faceDetectorListener = this
         )
         
         // Set initial text
-        binding.textFace.text = "Initializing camera..."
+        binding.textFace.text = "Initializing face detection..."
         
         // Wait until the view is properly laid out before starting camera
         view.post {
@@ -141,7 +147,7 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
                 )
                 
                 // Set initial text
-                _binding?.textFace?.text = "Camera ready"
+                _binding?.textFace?.text = "Face detection ready"
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Use case binding failed", e)
@@ -155,6 +161,8 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
         lifecycleScope.launch(Dispatchers.Default) {
             try {
                 val frameTime = SystemClock.uptimeMillis()
+                
+                // Convert ImageProxy to Bitmap
                 val bitmap = imageProxy.toBitmap()
                 
                 // Process the image
@@ -171,6 +179,37 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
         }
     }
     
+    // Extension function to convert ImageProxy to Bitmap
+    private fun ImageProxy.toBitmap(): Bitmap {
+        val yBuffer = planes[0].buffer // Y
+        val uBuffer = planes[1].buffer // U
+        val vBuffer = planes[2].buffer // V
+        
+        val ySize = yBuffer.remaining()
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+        
+        val nv21 = ByteArray(ySize + uSize + vSize)
+        
+        yBuffer.get(nv21, 0, ySize)
+        vBuffer.get(nv21, ySize, vSize)
+        uBuffer.get(nv21, ySize + vSize, uSize)
+        
+        val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, width, height), 100, out)
+        val imageBytes = out.toByteArray()
+        
+        // Create the bitmap
+        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        
+        // Mirror for front camera
+        val matrix = Matrix()
+        matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+        
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+    
     override fun onDetectionResult(result: FaceDetectorResult) {
         // Skip updates if fragment is not attached
         if (!isAdded) return
@@ -178,9 +217,6 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
         activity?.runOnUiThread {
             _binding?.let { binding ->
                 try {
-                    // Get the camera's orientation
-                    val rotation = binding.viewFinder.display.rotation
-                    
                     // Update the UI with the results
                     binding.overlayView.setResults(
                         result,
@@ -190,9 +226,11 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
                         binding.overlayView.height
                     )
                     
-                    // Display the number of faces detected
+                    // Display the number of faces detected and if face is in reference rectangle
                     val numFaces = result.detections().size
-                    binding.textFace.text = "Faces detected: $numFaces"
+                    val isFaceInRect = binding.overlayView.isFaceInReferenceRect()
+                    binding.textFace.text = "Faces detected: $numFaces | " + 
+                                           (if (isFaceInRect) "Face in position ✓" else "Please center your face ✗")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error updating UI: ${e.message}")
                     binding.textFace.text = "Display error: ${e.message}"
@@ -246,27 +284,4 @@ class FaceFragment : Fragment(), FaceDetectorHelper.DetectorListener {
     companion object {
         private const val TAG = "FaceFragment"
     }
-}
-
-// Extension function to convert ImageProxy to Bitmap
-private fun ImageProxy.toBitmap(): Bitmap {
-    val yBuffer = planes[0].buffer
-    val uBuffer = planes[1].buffer
-    val vBuffer = planes[2].buffer
-    
-    val ySize = yBuffer.remaining()
-    val uSize = uBuffer.remaining()
-    val vSize = vBuffer.remaining()
-    
-    val nv21 = ByteArray(ySize + uSize + vSize)
-    
-    yBuffer.get(nv21, 0, ySize)
-    vBuffer.get(nv21, ySize, vSize)
-    uBuffer.get(nv21, ySize + vSize, uSize)
-    
-    val yuvImage = android.graphics.YuvImage(nv21, android.graphics.ImageFormat.NV21, width, height, null)
-    val out = java.io.ByteArrayOutputStream()
-    yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, out)
-    val imageBytes = out.toByteArray()
-    return android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 }

@@ -30,6 +30,38 @@ class MangaViewModel(
     private var isFetching = false
     private val TAG = "MangaViewModel"
 
+    init {
+        // Load initial cached data
+        viewModelScope.launch {
+            try {
+                // Get max cached page to determine current page
+                val maxCachedPage = repository.getMaxCachedPage()
+                if (maxCachedPage > 0) {
+                    currentPage = maxCachedPage + 1
+                }
+                
+                // Observe all cached manga
+                repository.getAllMangaFromCache().collect { cachedList ->
+                    if (cachedList.isNotEmpty() && _mangaList.value.isEmpty()) {
+                        _mangaList.value = cachedList
+                        Log.d(TAG, "Loaded ${cachedList.size} manga from cache")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading cached manga: ${e.message}", e)
+            }
+        }
+        
+        // Clean old cache
+        viewModelScope.launch {
+            try {
+                repository.cleanOldCache()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error cleaning old cache: ${e.message}", e)
+            }
+        }
+    }
+
     fun fetchManga(apiKey: String, isRefresh: Boolean = false) {
         if (isFetching) return
         
@@ -45,7 +77,7 @@ class MangaViewModel(
                 }
 
                 Log.d(TAG, "Fetching page $currentPage")
-                val response = repository.fetchManga(apiKey, currentPage)
+                val response = repository.getManga(apiKey, currentPage, isRefresh)
                 
                 if (response.code == 200) {
                     val newMangaList = if (isRefresh) {

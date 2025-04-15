@@ -33,6 +33,12 @@ class MainActivity : AppCompatActivity() {
             navController.addOnDestinationChangedListener { _, destination, _ ->
                 when (destination.id) {
                     R.id.navigation_sign_in -> showBottomNavigation(false)
+                    R.id.mangaDescriptionFragment -> {
+                        // Keep bottom navigation visible but not focused on manga item
+                        if (userRepository.isUserLoggedIn()) {
+                            showBottomNavigation(true)
+                        }
+                    }
                     else -> {
                         if (userRepository.isUserLoggedIn()) {
                             showBottomNavigation(true)
@@ -70,6 +76,14 @@ class MainActivity : AppCompatActivity() {
             // User is not logged in, stay at sign in screen
             showBottomNavigation(false)
         }
+    }
+    
+    // Public method for logout
+    fun logout() {
+        userRepository.clearLoggedInUser()
+        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+        navController.navigate(R.id.navigation_sign_in)
+        showBottomNavigation(false)
     }
     
     override fun onDestroy() {
